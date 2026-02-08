@@ -27,6 +27,7 @@ PostQ is a backend tool for discovering and inventorying cryptographic assets ex
 
 ## Project structure
 
+```text
 cmd/
   api/            REST API server exposing scan & asset endpoints
   postq/          CLI tool for local scanning and experimentation
