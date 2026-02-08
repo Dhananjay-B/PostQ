@@ -27,8 +27,17 @@ PostQ is a backend tool for discovering and inventorying cryptographic assets ex
 
 ## Project structure
 
-```text
-cmd/        Entry points
+cmd/
+  api/            REST API server exposing scan & asset endpoints
+  postq/          CLI tool for local scanning and experimentation
+
 internal/
-  probe/    Network and TLS probes
-  model/    Canonical data models
+  api/            Gin handlers and background scan orchestration
+  config/         Configuration management and environment loading
+  helper/         Reusable helper functions
+  probe/          TLS and network probing logic
+  model/          Domain models
+    db/            Database schema representations (TLS assets, scans)
+
+Project root
+  go.mod / go.sum Dependency and module management
