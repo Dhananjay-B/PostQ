@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"fmt"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -131,6 +132,28 @@ func (handler *Handler) CreateTLSScan(c *gin.Context) {
 	c.JSON(201, gin.H{"status": "ok", "scan": scan})
 }
 
+func (handler *Handler) GetTLSScanResults(c *gin.Context) {
+	scanID := c.Param("scan_id")
+	rows, err := handler.DB.Query("SELECT scan_id, tls_version, cipher_suite, server_name FROM tls.scan_results WHERE scan_id = $1", scanID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	results := []tls.ScanResult{}
+	for rows.Next() {
+		var result tls.ScanResult
+		err := rows.Scan(&result.ScanID, &result.TLSVersion, &result.CipherSuite, &result.ServerName)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		results = append(results, result)
+	}
+	c.JSON(200, gin.H{"status": "ok", "results": results})
+}
+
 func (handler *Handler) startTLSScan(assetID, scanID int) {
 	asset, err := handler.GetTLSAssetByID(assetID)
 	if err != nil {
@@ -142,6 +165,7 @@ func (handler *Handler) startTLSScan(assetID, scanID int) {
 	}
 	tlsRaw, err := probe.ScanTLS(endpoint)
 	if err != nil {
+		fmt.Println(err)
 		handler.markScanFailed(scanID, err)
 		return
 	}

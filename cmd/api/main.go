@@ -34,6 +34,7 @@ func main() {
 			// TLS scans endpoints
 			tls.GET("/scans", handler.ListTLSScans)
 			tls.POST("/scans/:asset_id", handler.CreateTLSScan)
+			tls.GET("/scans/results/:scan_id", handler.GetTLSScanResults)
 		}
 	}
 
