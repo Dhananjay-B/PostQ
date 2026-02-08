@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/Dhananjay-B/PostQ/internal/model"
+	// "github.com/Dhananjay-B/PostQ/internal/helper"
 )
 
 func ScanTLS(e model.Endpoint) (model.TLSRaw, error) {
-	fmt.Println(e)
 
 	config := &tls.Config{
 		ServerName: e.HostName,
@@ -23,13 +23,11 @@ func ScanTLS(e model.Endpoint) (model.TLSRaw, error) {
 	state := connection.ConnectionState()
 
 	tlsRaw := &model.TLSRaw{
-		Host:		      e.HostName,
-		Port:			  e.Port,
-		Version:          tls.VersionName(state.Version),
-		CipherSuite:      tls.CipherSuiteName(state.CipherSuite),
-		ServerName:       state.ServerName,
-		PeerCertificates: state.PeerCertificates,
+		Host:        e.HostName,
+		Port:        e.Port,
+		Version:     tls.VersionName(state.Version),
+		CipherSuite: tls.CipherSuiteName(state.CipherSuite),
+		ServerName:  state.ServerName,
 	}
-
 	return *tlsRaw, nil
 }

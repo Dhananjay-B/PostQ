@@ -1,0 +1,169 @@
+package api
+
+import (
+	"database/sql"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/Dhananjay-B/PostQ/internal/model"
+	"github.com/Dhananjay-B/PostQ/internal/model/db/tls"
+	"github.com/Dhananjay-B/PostQ/internal/probe"
+)
+
+type Handler struct {
+	DB *sql.DB
+}
+
+//......................................//
+// 			TLS assets endpoints		//
+//......................................//
+
+func (handler *Handler) ListTLSAssets(c *gin.Context) {
+	rows, err := handler.DB.Query("SELECT * FROM tls.assets")
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	defer rows.Close()
+
+	assets := []tls.TLSAsset{}
+
+	for rows.Next() {
+		var asset tls.TLSAsset
+		err := rows.Scan(&asset.AssetID, &asset.Endpoint, &asset.Port, &asset.CreatedAt)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		assets = append(assets, asset)
+	}
+
+	c.JSON(200, gin.H{"status": "ok", "assets": assets})
+}
+
+func (handler *Handler) GetTLSAsset(c *gin.Context) {
+	id := c.Param("asset_id")
+	assetID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid asset_id"})
+		return
+	}
+	asset, err := handler.GetTLSAssetByID(int(assetID))
+	if err != nil {
+		c.JSON(404, gin.H{"error": "Asset not found"})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok", "asset": asset})
+}
+
+func (handler *Handler) CreateTLSAsset(c *gin.Context) {
+	var newAsset tls.TLSAsset
+	_ = c.BindJSON(&newAsset)
+
+	_, err := handler.DB.Exec("INSERT INTO tls.assets (endpoint, port) VALUES ($1, $2)", newAsset.Endpoint, newAsset.Port)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func (handler *Handler) DeleteTLSAsset(c *gin.Context) {
+	id := c.Param("asset_id")
+	_, err := handler.DB.Exec("DELETE FROM tls.assets WHERE asset_id = $1", id)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func (handler *Handler) GetTLSAssetByID(assetID int) (*tls.TLSAsset, error) {
+	row := handler.DB.QueryRow("SELECT asset_id, endpoint, port, created_at FROM tls.assets WHERE asset_id = $1", assetID)
+
+	var asset tls.TLSAsset
+	err := row.Scan(&asset.AssetID, &asset.Endpoint, &asset.Port, &asset.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &asset, nil
+}
+
+//......................................//
+// 			TLS scan endpoints		    //
+//......................................//
+
+func (handler *Handler) ListTLSScans(c *gin.Context) {
+	rows, err := handler.DB.Query("SELECT * FROM tls.scans")
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	scans := []tls.TLSScan{}
+
+	for rows.Next() {
+		var scan tls.TLSScan
+		err := rows.Scan(&scan.ScanID, &scan.AssetID, &scan.StartedAt, &scan.Status, &scan.FinishedAt)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		scans = append(scans, scan)
+	}
+	c.JSON(200, gin.H{"status": "ok", "scans": scans})
+}
+
+func (handler *Handler) CreateTLSScan(c *gin.Context) {
+	assetID := c.Param("asset_id")
+	var scan tls.TLSScan
+	err := handler.DB.QueryRow("INSERT INTO tls.scans (asset_id, status) VALUES ($1, 'running') RETURNING scan_id, asset_id, started_at, finished_at, status", assetID).Scan(&scan.ScanID, &scan.AssetID, &scan.StartedAt, &scan.FinishedAt, &scan.Status)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	go handler.startTLSScan(scan.AssetID, scan.ScanID)
+
+	c.JSON(201, gin.H{"status": "ok", "scan": scan})
+}
+
+func (handler *Handler) startTLSScan(assetID, scanID int) {
+	asset, err := handler.GetTLSAssetByID(assetID)
+	if err != nil {
+		return
+	}
+	endpoint := model.Endpoint{
+		HostName: asset.Endpoint,
+		Port:     asset.Port,
+	}
+	tlsRaw, err := probe.ScanTLS(endpoint)
+	if err != nil {
+		handler.markScanFailed(scanID, err)
+		return
+	}
+	handler.markScanCompleted(scanID)
+	handler.DB.Exec(`
+		INSERT INTO tls.scan_results (scan_id, tls_version, cipher_suite, server_name)
+		VALUES ($1, $2, $3, $4)
+	`, scanID, tlsRaw.Version, tlsRaw.CipherSuite, tlsRaw.ServerName)
+}
+
+func (handler *Handler) markScanCompleted(scanID int) {
+	handler.DB.Exec(`
+		UPDATE tls.scans
+		SET status = 'completed', finished_at = now()
+		WHERE scan_id = $1
+	`, scanID)
+}
+
+func (handler *Handler) markScanFailed(scanID int, err error) {
+	handler.DB.Exec(`
+		UPDATE tls.scans
+		SET status = 'failed', finished_at = now()
+		WHERE scan_id = $1
+	`, scanID)
+}
