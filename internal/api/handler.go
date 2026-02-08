@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -165,7 +164,6 @@ func (handler *Handler) startTLSScan(assetID, scanID int) {
 	}
 	tlsRaw, err := probe.ScanTLS(endpoint)
 	if err != nil {
-		fmt.Println(err)
 		handler.markScanFailed(scanID, err)
 		return
 	}
@@ -174,6 +172,14 @@ func (handler *Handler) startTLSScan(assetID, scanID int) {
 		INSERT INTO tls.scan_results (scan_id, tls_version, cipher_suite, server_name)
 		VALUES ($1, $2, $3, $4)
 	`, scanID, tlsRaw.Version, tlsRaw.CipherSuite, tlsRaw.ServerName)
+
+	peerCertificates := tlsRaw.PeerCertificates
+	for _, cert := range peerCertificates {
+		handler.DB.Exec(`
+			INSERT INTO tls.certificates (scan_id, position, subject_dn, issuer_dn, serial_number, not_before, not_after, public_key_algorithm, signature_algorithm, is_ca, is_self_signed)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		`, scanID, cert.Position, cert.SubjectDN, cert.IssuerDN, cert.SerialNumber, cert.NotBefore, cert.NotAfter, cert.PublicKeyAlg, cert.SignatureAlg, cert.IsCA, cert.IsSelfSigned)
+	}
 }
 
 func (handler *Handler) markScanCompleted(scanID int) {
