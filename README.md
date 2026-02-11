@@ -11,19 +11,53 @@ PostQ is a backend tool for discovering and inventorying cryptographic assets ex
 
 > PostQ discovers what is deployed, not what is intended.
 
-## Current scope
+## Current Scope
 
 - TCP + TLS (HTTPS)
 - Leaf certificate inspection
 - Negotiated TLS version and cipher
 
-## Planned
+## Planned Scope
+
+### HTTPS (Extended TLS Intelligence)
 
 - TLS version and cipher enumeration
-- Certificate chain analysis
+- Supported cipher suite discovery
+- Certificate chain analysis (root, intermediate, leaf)
+- Signature algorithm classification
+- Key exchange classification
+- Weak / deprecated crypto detection
 - Post-quantum risk classification
+- Certificate lifetime analysis
 - Historical cryptographic drift tracking
+- OCSP / CRL endpoint inspection
 - QUIC / HTTP-3 probing
+
+### SSH
+
+- SSH version detection
+- Host key algorithm and key size extraction
+- Key exchange (KEX) algorithm enumeration
+- Encryption and MAC algorithm enumeration
+- Deprecated / weak algorithm detection
+- Post-quantum risk classification
+
+### Email Infrastructure
+
+#### SMTP
+- STARTTLS detection
+- TLS enforcement posture (opportunistic vs strict)
+- MX record resolution and multi-host scanning
+- TLS parameter extraction
+- MTA-STS policy detection
+- DANE / DNSSEC validation checks
+
+#### IMAP / POP3
+- STARTTLS support detection
+- Implicit TLS (993 / 995) probing
+- TLS parameter extraction
+- Certificate chain inspection
+- Post-quantum risk classification
 
 ## Project structure
 
