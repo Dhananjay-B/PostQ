@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"database/sql"
+	"fmt"
 
 	standardmodel "github.com/Dhananjay-B/PostQ/internal/model/db/standard"
 	tlsmodel "github.com/Dhananjay-B/PostQ/internal/model/db/tls"
@@ -66,15 +67,25 @@ func (service *AnalysisService) AnalyseTLSScan(scanID int) {
 	}
 
 	type CertificateVulnerabilityAnalysis struct {
-		CertID              int64
-		PublicKeyAlg        string
-		PublicKeyAlgQVuln   bool
-		SignatureAlg        string
-		SignatureAlgQVuln   bool
-		IsQuantumVulnerable bool
+		CertID            int64
+		PublicKeyAlg      string
+		SignatureAlg      string
+		PublicKeyAlgQVuln bool
+		SignatureAlgQVuln bool
 	}
 
-	vulnerabilityResults := []CertificateVulnerabilityAnalysis{}
+	type ScanVulnerabilityAnalysis struct {
+		ScanID                           int
+		TLSVersion                       string
+		CipherSuite                      string
+		ServerName                       string
+		PeerCertificates                 []*tlsmodel.TLSCertificate
+		TLSVersionVuln                   bool
+		KeyExchangeAlgVuln               bool
+		CertificateVulnerabilityAnalysis []CertificateVulnerabilityAnalysis
+	}
+
+	certVulnerabilityResults := []CertificateVulnerabilityAnalysis{}
 
 	for _, cert := range peer_certificates {
 		analysis := CertificateVulnerabilityAnalysis{
@@ -84,15 +95,45 @@ func (service *AnalysisService) AnalyseTLSScan(scanID int) {
 		}
 
 		for _, alg := range standard_algorithms {
-			if alg.AlgorithmName == cert.PublicKeyAlg && alg.Role == "key_exchange" && alg.QuantumVulnerable {
+			if alg.AlgorithmName == cert.PublicKeyAlg && alg.Role == "signature" && alg.QuantumVulnerable {
 				analysis.PublicKeyAlgQVuln = true
 			}
 			if alg.AlgorithmName == cert.SignatureAlg && alg.Role == "signature" && alg.QuantumVulnerable {
 				analysis.SignatureAlgQVuln = true
 			}
 		}
-
-		analysis.IsQuantumVulnerable = analysis.PublicKeyAlgQVuln || analysis.SignatureAlgQVuln
-		vulnerabilityResults = append(vulnerabilityResults, analysis)
+		certVulnerabilityResults = append(certVulnerabilityResults, analysis)
 	}
+
+	scanVulnerabilityResults := ScanVulnerabilityAnalysis{
+		ScanID:                           scan_result.ScanID,
+		TLSVersion:                       scan_result.TLSVersion,
+		CipherSuite:                      scan_result.CipherSuite,
+		ServerName:                       scan_result.ServerName,
+		PeerCertificates:                 peer_certificates,
+		TLSVersionVuln:                   isTLSVersionVulnerable(scan_result.TLSVersion),
+		KeyExchangeAlgVuln:               isKeyExchangeAlgVulnerable(scan_result.CipherSuite, standard_algorithms),
+		CertificateVulnerabilityAnalysis: certVulnerabilityResults,
+	}
+
+	fmt.Println(scanVulnerabilityResults)
+}
+
+func isKeyExchangeAlgVulnerable(KeyExchangeAlg string, standard_algorithms []standardmodel.Algorithm) bool {
+	for _, alg := range standard_algorithms {
+		if alg.AlgorithmName == KeyExchangeAlg && alg.Role == "key_exchange" && alg.QuantumVulnerable {
+			return true
+		}
+	}
+	return false
+}
+
+func isTLSVersionVulnerable(tlsVersion string) bool {
+	vulnerableVersions := []string{"TLS 1.2", "TLS 1.1"}
+	for _, v := range vulnerableVersions {
+		if tlsVersion == v {
+			return true
+		}
+	}
+	return false
 }
