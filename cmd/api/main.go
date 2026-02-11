@@ -5,18 +5,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/Dhananjay-B/PostQ/internal/analysis"
 	"github.com/Dhananjay-B/PostQ/internal/api"
 	"github.com/Dhananjay-B/PostQ/internal/config"
+	"github.com/Dhananjay-B/PostQ/internal/service"
 )
 
 func main() {
 	// Get configs
 	appConfigs := config.LoadAppConfig()
 
-	db := api.GetDatabaseConnection()
+	db := service.GetDatabaseConnection()
+	analysisService := analysis.New(db)
+
 	defer db.Close()
 
-	handler := &api.Handler{DB: db}
+	handler := &api.Handler{DB: db, AnalysisService: analysisService}
 
 	router := gin.Default()
 

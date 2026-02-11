@@ -6,13 +6,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/Dhananjay-B/PostQ/internal/analysis"
 	"github.com/Dhananjay-B/PostQ/internal/model"
 	"github.com/Dhananjay-B/PostQ/internal/model/db/tls"
 	"github.com/Dhananjay-B/PostQ/internal/probe"
 )
 
 type Handler struct {
-	DB *sql.DB
+	DB              *sql.DB
+	AnalysisService *analysis.AnalysisService
 }
 
 //......................................//
@@ -180,6 +182,9 @@ func (handler *Handler) startTLSScan(assetID, scanID int) {
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		`, scanID, cert.Position, cert.SubjectDN, cert.IssuerDN, cert.SerialNumber, cert.NotBefore, cert.NotAfter, cert.PublicKeyAlg, cert.SignatureAlg, cert.IsCA, cert.IsSelfSigned)
 	}
+
+	// start scan analysis
+	handler.AnalysisService.AnalyseTLSScan(scanID)
 }
 
 func (handler *Handler) markScanCompleted(scanID int) {
