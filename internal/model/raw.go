@@ -5,10 +5,10 @@ import (
 )
 
 type TLSRaw struct {
-	Host             string
-	Port             int
-	Version          string
-	CipherSuite      string
-	ServerName       string
-	PeerCertificates []*tlsmodel.TLSCertificate
+	Host                 string
+	Port                 int
+	SupportedTLSVersions map[uint16]bool
+	SupportedCiphers     map[uint16][]uint16
+	ServerName           string
+	PeerCertificates     []*tlsmodel.TLSCertificate // Only for TLS 1.3
 }
