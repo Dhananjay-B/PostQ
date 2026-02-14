@@ -2,6 +2,9 @@ package probe
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -52,16 +55,19 @@ func ScanTLS(e model.Endpoint) (model.TLSRaw, error) {
 
 			for i, cert := range state.PeerCertificates {
 				peerCerts[i] = &tlsmodel.TLSCertificate{
-					Position:     i,
-					SubjectDN:    cert.Subject.String(),
-					IssuerDN:     cert.Issuer.String(),
-					SerialNumber: cert.SerialNumber.String(),
-					NotBefore:    cert.NotBefore,
-					NotAfter:     cert.NotAfter,
-					PublicKeyAlg: cert.PublicKeyAlgorithm.String(),
-					SignatureAlg: cert.SignatureAlgorithm.String(),
-					IsCA:         cert.IsCA,
-					IsSelfSigned: IsSelfSigned(cert),
+					Position:        i,
+					SubjectDN:       cert.Subject.String(),
+					IssuerDN:        cert.Issuer.String(),
+					SerialNumber:    cert.SerialNumber.String(),
+					NotBefore:       cert.NotBefore,
+					NotAfter:        cert.NotAfter,
+					FullLifeTime:    int(cert.NotAfter.Sub(cert.NotBefore).Hours() / 24),
+					LeftLifeTime:    int(time.Until(cert.NotAfter).Hours() / 24),
+					PublicKeyAlg:    cert.PublicKeyAlgorithm.String(),
+					PublicKeyLength: getPublicKeyLength(cert.PublicKey),
+					SignatureAlg:    cert.SignatureAlgorithm.String(),
+					IsCA:            cert.IsCA,
+					IsSelfSigned:    IsSelfSigned(cert),
 				}
 			}
 
@@ -152,4 +158,17 @@ func enumerateCiphers(host string, port int, version uint16) []uint16 {
 
 func IsSelfSigned(cert *x509.Certificate) bool {
 	return bytes.Equal(cert.RawSubject, cert.RawIssuer)
+}
+
+func getPublicKeyLength(publicKey any) int {
+	switch key := publicKey.(type) {
+	case *rsa.PublicKey:
+		return key.N.BitLen()
+	case *ecdsa.PublicKey:
+		return key.Params().BitSize
+	case ed25519.PublicKey:
+		return len(key) * 8
+	default:
+		return 0
+	}
 }
