@@ -76,3 +76,9 @@ internal/
 
 Project root
   go.mod / go.sum Dependency and module management
+```
+## Contribution
+
+We welcome contributions of all sizes.
+
+Refer to [CONTRIBUTING.md](CONTRIBUTING.md) for contribution steps & guidelines
