@@ -21,15 +21,6 @@ PostQ is a backend tool for discovering and inventorying cryptographic assets ex
 
 ### HTTPS (Extended TLS Intelligence)
 
-- TLS version and cipher enumeration
-- Supported cipher suite discovery
-- Certificate chain analysis (root, intermediate, leaf)
-- Signature algorithm classification
-- Key exchange classification
-- Weak / deprecated crypto detection
-- Post-quantum risk classification
-- Certificate lifetime analysis
-- Historical cryptographic drift tracking
 - OCSP / CRL endpoint inspection
 - QUIC / HTTP-3 probing
 
