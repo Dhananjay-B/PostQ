@@ -12,14 +12,15 @@ import (
 	"time"
 
 	"github.com/Dhananjay-B/PostQ/internal/model"
-	tlsmodel "github.com/Dhananjay-B/PostQ/internal/model/db/tls"
+	tlsdbmodel "github.com/Dhananjay-B/PostQ/internal/model/db/tls"
+	tlsprobemodel "github.com/Dhananjay-B/PostQ/internal/model/probemodels"
 )
 
 var dialer = &net.Dialer{
 	Timeout: 3 * time.Second,
 }
 
-func ScanTLS(e model.Endpoint) (model.TLSRaw, error) {
+func ScanTLS(e model.Endpoint) (tlsprobemodel.TLSRaw, error) {
 	supportedVersions := enumerateTLSVersions(e.HostName, e.Port)
 	supportedCiphers := make(map[uint16][]uint16)
 	for version, supported := range supportedVersions {
@@ -32,7 +33,7 @@ func ScanTLS(e model.Endpoint) (model.TLSRaw, error) {
 		}
 	}
 
-	tlsRaw := &model.TLSRaw{}
+	tlsRaw := &tlsprobemodel.TLSRaw{}
 
 	for _, version := range []uint16{tls.VersionTLS13, tls.VersionTLS12, tls.VersionTLS11, tls.VersionTLS10} {
 		if supportedVersions[version] {
@@ -51,10 +52,10 @@ func ScanTLS(e model.Endpoint) (model.TLSRaw, error) {
 
 			state := connection.ConnectionState()
 
-			peerCerts := make([]*tlsmodel.TLSCertificate, len(state.PeerCertificates))
+			peerCerts := make([]*tlsdbmodel.TLSCertificate, len(state.PeerCertificates))
 
 			for i, cert := range state.PeerCertificates {
-				peerCerts[i] = &tlsmodel.TLSCertificate{
+				peerCerts[i] = &tlsdbmodel.TLSCertificate{
 					Position:        i,
 					SubjectDN:       cert.Subject.String(),
 					IssuerDN:        cert.Issuer.String(),

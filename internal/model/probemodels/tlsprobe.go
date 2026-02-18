@@ -1,7 +1,7 @@
-package model
+package probemodels
 
 import (
-	tlsmodel "github.com/Dhananjay-B/PostQ/internal/model/db/tls"
+	tlsdbmodel "github.com/Dhananjay-B/PostQ/internal/model/db/tls"
 )
 
 type TLSRaw struct {
@@ -10,5 +10,5 @@ type TLSRaw struct {
 	SupportedTLSVersions map[uint16]bool
 	SupportedCiphers     map[uint16][]uint16
 	ServerName           string
-	PeerCertificates     []*tlsmodel.TLSCertificate // Only for TLS 1.3
+	PeerCertificates     []*tlsdbmodel.TLSCertificate // Only for TLS 1.3
 }
