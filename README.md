@@ -1,6 +1,6 @@
 # PostQ
 
-PostQ is a backend tool for discovering and inventorying cryptographic assets exposed by public TLS/HTTPS endpoints, with a focus on post-quantum risk assessment.
+PostQ is a tool for discovering and inventorying cryptographic assets inside network (TLS/HTTPS endpoint, SSH, Email infra etc), with a focus on post-quantum risk assessment.
 
 ## What it does
 
