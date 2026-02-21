@@ -22,6 +22,7 @@ var dialer = &net.Dialer{
 
 func ScanTLS(e model.Endpoint) (tlsprobemodel.TLSRaw, error) {
 	supportedVersions := enumerateTLSVersions(e.HostName, e.Port)
+
 	supportedCiphers := make(map[uint16][]uint16)
 	for version, supported := range supportedVersions {
 		if version == tls.VersionTLS13 {
@@ -33,6 +34,12 @@ func ScanTLS(e model.Endpoint) (tlsprobemodel.TLSRaw, error) {
 		}
 	}
 
+	serverCipherPreferences := make(map[uint16]bool)
+	for version, supported := range supportedVersions {
+		if supported {
+			serverCipherPreferences[version] = detectServerCipherPreference(e.HostName, e.Port, version, supportedCiphers[version])
+		}
+	}
 	tlsRaw := &tlsprobemodel.TLSRaw{}
 
 	for _, version := range []uint16{tls.VersionTLS13, tls.VersionTLS12, tls.VersionTLS11, tls.VersionTLS10} {
@@ -80,9 +87,11 @@ func ScanTLS(e model.Endpoint) (tlsprobemodel.TLSRaw, error) {
 			tlsRaw.Host = e.HostName
 			tlsRaw.Port = e.Port
 			tlsRaw.SupportedTLSVersions = supportedVersions
-			tlsRaw.SupportedCiphers = supportedCiphers
+			tlsRaw.ServerCipherPreference = serverCipherPreferences
 			tlsRaw.ServerName = state.ServerName
 			tlsRaw.PeerCertificates = peerCerts
+			tlsRaw.SupportedCiphers = supportedCiphers
+
 			break
 		}
 	}
@@ -155,6 +164,61 @@ func enumerateCiphers(host string, port int, version uint16) []uint16 {
 		conn.Close()
 	}
 	return supportedCiphers
+}
+
+func detectServerCipherPreference(host string, port int, version uint16, cipherList []uint16) bool {
+
+	if version >= tls.VersionTLS13 {
+		return false
+	}
+
+	if len(cipherList) < 2 {
+		return false
+	}
+
+	address := fmt.Sprintf("%s:%d", host, port)
+
+	config1 := &tls.Config{
+		ServerName:   host,
+		MinVersion:   version,
+		MaxVersion:   version,
+		CipherSuites: cipherList,
+	}
+
+	conn1, err := tls.DialWithDialer(dialer, "tcp", address, config1)
+	if err != nil {
+		return false
+	}
+	negotiatedCipherSuite1 := conn1.ConnectionState().CipherSuite
+	conn1.Close()
+
+	reversedCipherList := make([]uint16, len(cipherList))
+	j := 0
+	for i := len(cipherList) - 1; i >= 0; i-- {
+		reversedCipherList[j] = cipherList[i]
+		j += 1
+	}
+
+	config2 := &tls.Config{
+		ServerName:   host,
+		MinVersion:   version,
+		MaxVersion:   version,
+		CipherSuites: reversedCipherList,
+	}
+
+	conn2, err := tls.DialWithDialer(dialer, "tcp", address, config2)
+	if err != nil {
+		return false
+	}
+	negotiatedCipherSuite2 := conn2.ConnectionState().CipherSuite
+	conn2.Close()
+
+	if negotiatedCipherSuite1 == negotiatedCipherSuite2 {
+		return true
+	} else {
+		return false
+	}
+
 }
 
 func IsSelfSigned(cert *x509.Certificate) bool {
