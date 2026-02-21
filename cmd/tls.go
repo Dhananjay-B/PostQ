@@ -1,5 +1,5 @@
 /*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
+Copyright © 2026 DHANANJAY BHUJBAL <dhananjay.bhujbal19@vit.edu>
 */
 package cmd
 
@@ -15,11 +15,15 @@ import (
 	probe "github.com/Dhananjay-B/PostQ/internal/probe"
 )
 
-// tlsCmd represents the tls command
 var tlsCmd = &cobra.Command{
 	Use:   "tls [endpoint:port]",
 	Short: "Scan TLS endpoint",
-	Args:  cobra.ExactArgs(1),
+	Long: `Scan TLS endpoint to get cryptograhpic inventory.
+TLS scan performs enumerated scanning and provides complete set of supported cryptogrphic algorithms/verions for
+- Supported TLS Versions
+- SupportedCiphers
+- Peer Certificates`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		target := args[0]
 

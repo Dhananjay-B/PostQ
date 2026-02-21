@@ -1,5 +1,5 @@
 /*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
+Copyright © 2026 DHANANJAY BHUJBAL <dhananjay.bhujbal19@vit.edu>
 */
 package cmd
 
@@ -18,7 +18,19 @@ import (
 var sshCmd = &cobra.Command{
 	Use:   "ssh [host:port]",
 	Short: "Scan SSH handshake with remote host",
-	Args:  cobra.ExactArgs(1),
+	Long: `Scan SSH host to get cryptograhpic inventory.
+SSH scan makes raw TCP connection to remote host on specified port and collects below information
+- Kex Algorithms                       
+- HostKey Algorithms                   
+- EncryptionAlgorithms - ClientToServer  
+- EncryptionAlgorithms - ServerToClient  
+- MacAlgorithms - ClientToServer         
+- MacAlgorithms - ServerToClient         
+- CompressionAlgorithms - ClientToServer 
+- CompressionAlgorithms - ServerToClient 
+- Language - ClientToServer              
+- Language - ServerToClient`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		target := args[0]
 
