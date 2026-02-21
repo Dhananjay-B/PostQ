@@ -13,25 +13,30 @@ import (
 	sshprobemodel "github.com/Dhananjay-B/PostQ/internal/model/probemodels"
 )
 
-func ScanSSH(target model.SSHTarget) {
+func ScanSSH(target model.SSHTarget) (sshprobemodel.SSHAlgorithms, error) {
+	var probeResponse sshprobemodel.SSHAlgorithms
+
 	connection, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", target.HostName, target.Port), 5*time.Second)
 	if err != nil {
-		fmt.Println("Error connecting to SSH server:", err)
-		return
+		return probeResponse, fmt.Errorf("ssh connection failed: %w", err)
 	}
 
-	connection.Write([]byte("SSH-2.0-POSTQ\r\n"))
+	_, err = connection.Write([]byte("SSH-2.0-POSTQ\r\n"))
+	if err != nil {
+		return probeResponse, fmt.Errorf("failed to send client banner: %w", err)
+	}
 
 	reader := bufio.NewReader(connection)
-	hostVersion, err := reader.ReadString('\n')
+
+	_, err = reader.ReadString('\n')
 	if err != nil {
-		fmt.Println("Error reading SSH host version:", err)
-		return
+		return probeResponse, fmt.Errorf("failed to read server banner: %w", err)
 	}
-	fmt.Println("SSH Host Version:", hostVersion)
 
 	packetLength := make([]byte, 4)
-	io.ReadFull(reader, packetLength)
+	if _, err := io.ReadFull(reader, packetLength); err != nil {
+		return probeResponse, fmt.Errorf("failed to read packet length: %w", err)
+	}
 
 	packet := make([]byte, binary.BigEndian.Uint32(packetLength))
 	io.ReadFull(reader, packet)
@@ -39,8 +44,6 @@ func ScanSSH(target model.SSHTarget) {
 	payload := packet[1 : len(packet)-int(packet[0])]
 
 	offset := 1 + 16 // Skip message code and cookies
-
-	probeResponse := &sshprobemodel.SSHAlgorithms{}
 
 	probeResponse.KexAlgorithms, _ = readNameList(payload, &offset)
 	probeResponse.HostKeyAlgorithms, _ = readNameList(payload, &offset)
@@ -53,7 +56,7 @@ func ScanSSH(target model.SSHTarget) {
 	probeResponse.LanguageClientToServer, _ = readNameList(payload, &offset)
 	probeResponse.LanguageServerToClient, _ = readNameList(payload, &offset)
 
-	fmt.Printf("SSH Probe Response: %+v\n", probeResponse)
+	return probeResponse, nil
 }
 
 func readNameList(payload []byte, offset *int) ([]string, error) {
