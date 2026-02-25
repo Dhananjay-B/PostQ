@@ -9,8 +9,8 @@ import (
 	"os"
 	"strconv"
 
-	model "github.com/Dhananjay-B/PostQ/internal/model"
-	probe "github.com/Dhananjay-B/PostQ/internal/probe"
+	sslmodels "github.com/Dhananjay-B/PostQ/internal/model/sshmodels"
+	probes "github.com/Dhananjay-B/PostQ/internal/probe"
 	"github.com/spf13/cobra"
 )
 
@@ -44,12 +44,12 @@ SSH scan makes raw TCP connection to remote host on specified port and collects 
 			return err
 		}
 
-		sshTarget := model.SSHTarget{
+		sshTarget := sslmodels.SSHTarget{
 			HostName: host,
 			Port:     port,
 		}
 
-		result, err := probe.ScanSSH(sshTarget)
+		result, err := probes.ScanSSH(sshTarget)
 		if err != nil {
 			return err
 		}

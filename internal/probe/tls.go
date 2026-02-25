@@ -11,17 +11,15 @@ import (
 	"net"
 	"time"
 
-	"github.com/Dhananjay-B/PostQ/internal/model"
-	tlsdbmodel "github.com/Dhananjay-B/PostQ/internal/model/db/tls"
-	tlsprobemodel "github.com/Dhananjay-B/PostQ/internal/model/probemodels"
+	tlsmodels "github.com/Dhananjay-B/PostQ/internal/model/tlsmodels"
 )
 
 var dialer = &net.Dialer{
 	Timeout: 3 * time.Second,
 }
 
-func ScanTLS(e model.Endpoint) (tlsprobemodel.TLSRaw, error) {
-	supportedVersions := enumerateTLSVersions(e.HostName, e.Port)
+func ScanTLS(target tlsmodels.TLSTarget) (tlsmodels.TLSProbe, error) {
+	supportedVersions := enumerateTLSVersions(target.HostName, target.Port)
 
 	supportedCiphers := make(map[uint16][]uint16)
 	for version, supported := range supportedVersions {
@@ -30,28 +28,29 @@ func ScanTLS(e model.Endpoint) (tlsprobemodel.TLSRaw, error) {
 			continue
 		}
 		if supported {
-			supportedCiphers[version] = enumerateCiphers(e.HostName, e.Port, version)
+			supportedCiphers[version] = enumerateCiphers(target.HostName, target.Port, version)
 		}
 	}
 
 	serverCipherPreferences := make(map[uint16]bool)
 	for version, supported := range supportedVersions {
 		if supported {
-			serverCipherPreferences[version] = detectServerCipherPreference(e.HostName, e.Port, version, supportedCiphers[version])
+			serverCipherPreferences[version] = detectServerCipherPreference(target.HostName, target.Port, version, supportedCiphers[version])
 		}
 	}
-	tlsRaw := &tlsprobemodel.TLSRaw{}
+
+	tlsProbe := &tlsmodels.TLSProbe{}
 
 	for _, version := range []uint16{tls.VersionTLS13, tls.VersionTLS12, tls.VersionTLS11, tls.VersionTLS10} {
 		if supportedVersions[version] {
 
 			config := &tls.Config{
-				ServerName: e.HostName,
+				ServerName: target.HostName,
 				MinVersion: version,
 				MaxVersion: version,
 			}
 
-			connection, err := tls.DialWithDialer(dialer, "tcp", fmt.Sprintf("%s:%d", e.HostName, e.Port), config)
+			connection, err := tls.DialWithDialer(dialer, "tcp", fmt.Sprintf("%s:%d", target.HostName, target.Port), config)
 			if err != nil {
 				continue
 			}
@@ -59,10 +58,10 @@ func ScanTLS(e model.Endpoint) (tlsprobemodel.TLSRaw, error) {
 
 			state := connection.ConnectionState()
 
-			peerCerts := make([]*tlsdbmodel.TLSCertificate, len(state.PeerCertificates))
+			peerCerts := make([]*tlsmodels.TLSCertificate, len(state.PeerCertificates))
 
 			for i, cert := range state.PeerCertificates {
-				peerCerts[i] = &tlsdbmodel.TLSCertificate{
+				peerCerts[i] = &tlsmodels.TLSCertificate{
 					Position:        i,
 					SubjectDN:       cert.Subject.String(),
 					IssuerDN:        cert.Issuer.String(),
@@ -84,18 +83,18 @@ func ScanTLS(e model.Endpoint) (tlsprobemodel.TLSRaw, error) {
 				supportedCiphers[tls.VersionTLS13] = []uint16{state.CipherSuite}
 			}
 
-			tlsRaw.Host = e.HostName
-			tlsRaw.Port = e.Port
-			tlsRaw.SupportedTLSVersions = supportedVersions
-			tlsRaw.ServerCipherPreference = serverCipherPreferences
-			tlsRaw.ServerName = state.ServerName
-			tlsRaw.PeerCertificates = peerCerts
-			tlsRaw.SupportedCiphers = supportedCiphers
+			tlsProbe.Host = target.HostName
+			tlsProbe.Port = target.Port
+			tlsProbe.SupportedTLSVersions = supportedVersions
+			tlsProbe.ServerCipherPreference = serverCipherPreferences
+			tlsProbe.ServerName = state.ServerName
+			tlsProbe.PeerCertificates = peerCerts
+			tlsProbe.SupportedCiphers = supportedCiphers
 
 			break
 		}
 	}
-	return *tlsRaw, nil
+	return *tlsProbe, nil
 }
 
 func enumerateTLSVersions(host string, port int) map[uint16]bool {

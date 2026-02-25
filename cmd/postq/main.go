@@ -3,19 +3,19 @@ package main
 import (
 	"fmt"
 
-	"github.com/Dhananjay-B/PostQ/internal/model"
-	"github.com/Dhananjay-B/PostQ/internal/probe"
+	tlsmodels "github.com/Dhananjay-B/PostQ/internal/model/tlsmodels"
+	probe "github.com/Dhananjay-B/PostQ/internal/probe"
 )
 
 func main() {
-	endpoint := model.Endpoint{
+	target := tlsmodels.TLSTarget{
 		HostName: "example.com",
 		Port:     443,
 	}
 
-	_, err := probe.ScanTLS(endpoint)
+	results, err := probe.ScanTLS(target)
 	if err != nil {
 		fmt.Println(err)
 	}
-	// fmt.Println(results)
+	fmt.Println(results)
 }

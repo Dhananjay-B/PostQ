@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	model "github.com/Dhananjay-B/PostQ/internal/model"
-	probe "github.com/Dhananjay-B/PostQ/internal/probe"
+	tlsmodels "github.com/Dhananjay-B/PostQ/internal/model/tlsmodels"
+	probes "github.com/Dhananjay-B/PostQ/internal/probe"
 )
 
 var tlsCmd = &cobra.Command{
@@ -37,11 +37,11 @@ TLS scan performs enumerated scanning and provides complete set of supported cry
 			return err
 		}
 
-		endpoint := model.Endpoint{
+		endpoint := tlsmodels.TLSTarget{
 			HostName: host,
 			Port:     port,
 		}
-		result, err := probe.ScanTLS(endpoint)
+		result, err := probes.ScanTLS(endpoint)
 		if err != nil {
 			return err
 		}

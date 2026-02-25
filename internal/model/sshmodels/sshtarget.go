@@ -1,4 +1,4 @@
-package model
+package sshmodels
 
 type SSHTarget struct {
 	HostName string

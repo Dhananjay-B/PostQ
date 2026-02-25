@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	model "github.com/Dhananjay-B/PostQ/internal/model"
-	sshprobemodel "github.com/Dhananjay-B/PostQ/internal/model/probemodels"
+	sshmodels "github.com/Dhananjay-B/PostQ/internal/model/sshmodels"
 )
 
-func ScanSSH(target model.SSHTarget) (sshprobemodel.SSHAlgorithms, error) {
-	var probeResponse sshprobemodel.SSHAlgorithms
+func ScanSSH(target sshmodels.SSHTarget) (sshmodels.SSHProbe, error) {
+
+	var probeResponse sshmodels.SSHProbe
 
 	connection, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", target.HostName, target.Port), 5*time.Second)
 	if err != nil {

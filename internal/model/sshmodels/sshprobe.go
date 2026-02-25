@@ -1,6 +1,6 @@
-package probemodels
+package sshmodels
 
-type SSHAlgorithms struct {
+type SSHProbe struct {
 	KexAlgorithms                       []string
 	HostKeyAlgorithms                   []string
 	EncryptionAlgorithmsClientToServer  []string
