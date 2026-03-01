@@ -11,9 +11,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Dhananjay-B/PostQ/internal/analysis/tlsanalysis"
 	tlsmodels "github.com/Dhananjay-B/PostQ/internal/model/tlsmodels"
 	probes "github.com/Dhananjay-B/PostQ/internal/probe"
 )
+
+var assess bool
 
 var tlsCmd = &cobra.Command{
 	Use:   "tls [endpoint:port]",
@@ -45,6 +48,15 @@ TLS scan performs enumerated scanning and provides complete set of supported cry
 		if err != nil {
 			return err
 		}
+		if assess {
+			risks, err := tlsanalysis.AnalyzeTLSProbe(probe)
+			if err != nil {
+				return err
+			}
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(risks)
+		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(probe)
@@ -53,4 +65,11 @@ TLS scan performs enumerated scanning and provides complete set of supported cry
 
 func init() {
 	scanCmd.AddCommand(tlsCmd)
+
+	tlsCmd.Flags().BoolVar(
+		&assess,
+		"assess",
+		false,
+		"Run quantum risk assessment on scan result",
+	)
 }

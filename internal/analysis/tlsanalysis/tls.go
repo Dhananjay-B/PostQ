@@ -4,7 +4,7 @@ import (
 	tlsmodels "github.com/Dhananjay-B/PostQ/internal/model/tlsmodels"
 )
 
-func AnalyzeTLSProbe(probe tlsmodels.TLSProbe) TLSQuantumAssessment {
+func AnalyzeTLSProbe(probe tlsmodels.TLSProbe) (TLSQuantumAssessment, error) {
 
 	versionAnalysis := analyzeTLSVersions(probe)
 	cipherSuiteAnalysis := analyzeTLSCiphers(probe)
@@ -12,7 +12,7 @@ func AnalyzeTLSProbe(probe tlsmodels.TLSProbe) TLSQuantumAssessment {
 	return TLSQuantumAssessment{
 		Protocol:    versionAnalysis,
 		CipherSuite: cipherSuiteAnalysis,
-	}
+	}, nil
 }
 
 type TLSQuantumAssessment struct {
