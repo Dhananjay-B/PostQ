@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	tlsanalysis "github.com/Dhananjay-B/PostQ/internal/analysis/tlsanalysis"
 	tlsmodels "github.com/Dhananjay-B/PostQ/internal/model/tlsmodels"
 	probe "github.com/Dhananjay-B/PostQ/internal/probe"
 )
@@ -17,5 +18,5 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(results)
+	fmt.Println(tlsanalysis.AnalyzeTLSProbe(results))
 }

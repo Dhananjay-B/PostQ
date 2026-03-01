@@ -9,21 +9,15 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/spf13/cobra"
-
+	tlsanalysis "github.com/Dhananjay-B/PostQ/internal/analysis/tlsanalysis"
 	tlsmodels "github.com/Dhananjay-B/PostQ/internal/model/tlsmodels"
 	probes "github.com/Dhananjay-B/PostQ/internal/probe"
+	"github.com/spf13/cobra"
 )
 
-var tlsCmd = &cobra.Command{
-	Use:   "tls [endpoint:port]",
-	Short: "Scan TLS endpoint",
-	Long: `Scan TLS endpoint to get cryptograhpic inventory.
-TLS scan performs enumerated scanning and provides complete set of supported cryptogrphic algorithms/verions for
-- Supported TLS Versions
-- SupportedCiphers
-- Peer Certificates`,
-	Args: cobra.ExactArgs(1),
+var assessTlsCmd = &cobra.Command{
+	Use:   "tls",
+	Short: "Assess TLS endpoint for quantum risks",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		target := args[0]
 
@@ -45,12 +39,13 @@ TLS scan performs enumerated scanning and provides complete set of supported cry
 		if err != nil {
 			return err
 		}
+		risk := tlsanalysis.AnalyzeTLSProbe(probe)
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		return enc.Encode(probe)
+		return enc.Encode(risk)
 	},
 }
 
 func init() {
-	scanCmd.AddCommand(tlsCmd)
+	assessCmd.AddCommand(assessTlsCmd)
 }
