@@ -40,49 +40,34 @@ func analyzeTLSVersions(probe tlsmodels.TLSProbe) tlsmodels.TLSProtocolQuantum {
 		result.ClassicalFallbackPresent = true
 	}
 
-	result.HighestVersion = versionToString(highest)
-	result.LowestVersion = versionToString(lowest)
+	result.HighestVersion = VersionToString(highest)
+	result.LowestVersion = VersionToString(lowest)
 
 	// ---- Quantum Risk Evaluation ---- //
 
 	if result.TLS13Enabled {
 		result.PQMigrationReady = true
-		result.QuantumSignals = append(result.QuantumSignals,
-			TLSVersionPolicy[PolicyTLS13Enabled],
+		result.QuantumAssessment = append(result.QuantumAssessment,
+			TLSQuantumPolicy[PolicyTLS13Enabled],
 		)
 	} else {
-		result.QuantumSignals = append(result.QuantumSignals,
-			TLSVersionPolicy[PolicyTLS13Missing],
+		result.QuantumAssessment = append(result.QuantumAssessment,
+			TLSQuantumPolicy[PolicyTLS13Missing],
 		)
 	}
 
 	if result.ClassicalFallbackPresent {
 		result.HybridBypassSurface = true
-		result.QuantumSignals = append(result.QuantumSignals,
-			TLSVersionPolicy[PolicyClassicalFallback],
+		result.QuantumAssessment = append(result.QuantumAssessment,
+			TLSQuantumPolicy[PolicyClassicalFallback],
 		)
 	}
 
 	if result.LegacyEnabled {
-		result.QuantumSignals = append(result.QuantumSignals,
-			TLSVersionPolicy[PolicyLegacyEnabled],
+		result.QuantumAssessment = append(result.QuantumAssessment,
+			TLSQuantumPolicy[PolicyLegacyEnabled],
 		)
 	}
 
 	return result
-}
-
-func versionToString(version uint16) string {
-	switch version {
-	case tls.VersionTLS13:
-		return "TLS1.3"
-	case tls.VersionTLS12:
-		return "TLS1.2"
-	case tls.VersionTLS11:
-		return "TLS1.1"
-	case tls.VersionTLS10:
-		return "TLS1.0"
-	default:
-		return "Unknown"
-	}
 }

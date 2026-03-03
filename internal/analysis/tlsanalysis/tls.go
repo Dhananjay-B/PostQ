@@ -10,12 +10,14 @@ func AnalyzeTLSProbe(probe tlsmodels.TLSProbe) (TLSQuantumAssessment, error) {
 	cipherSuiteAnalysis := analyzeTLSCiphers(probe)
 
 	return TLSQuantumAssessment{
+		Host:        probe.Host,
 		Protocol:    versionAnalysis,
 		CipherSuite: cipherSuiteAnalysis,
 	}, nil
 }
 
 type TLSQuantumAssessment struct {
+	Host        string
 	Protocol    tlsmodels.TLSProtocolQuantum
 	CipherSuite tlsmodels.TLSCipherQuantum
 }

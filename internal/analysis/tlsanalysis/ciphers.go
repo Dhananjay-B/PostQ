@@ -17,20 +17,22 @@ func analyzeTLSCiphers(probe tlsmodels.TLSProbe) tlsmodels.TLSCipherQuantum {
 	for version, cipherList := range probe.SupportedCiphers {
 
 		versionAnalysis := tlsmodels.TLSVersionCipherQuantum{
-			Version:                    versionToString(version),
+			Version:                    VersionToString(version),
 			AllKeyExchangesClassical:   true,
 			AllAuthenticationClassical: true,
+			QuantumAssessment:          []tlsmodels.QuantumAssessment{},
 		}
-
-		kexTypes := make(map[string]bool)
-		authTypes := make(map[string]bool)
 
 		// TLS 1.3 is structurally different
 		if version == tls.VersionTLS13 {
 			versionAnalysis.TLS13Cipher = true
+			versionAnalysis.QuantumAssessment = append(versionAnalysis.QuantumAssessment, TLSQuantumPolicy[PolicyTLS13ModernCipher])
 			result.PerVersion = append(result.PerVersion, versionAnalysis)
 			continue
 		}
+
+		kexTypes := make(map[string]bool)
+		authTypes := make(map[string]bool)
 
 		for _, cipherID := range cipherList {
 
@@ -74,8 +76,8 @@ func analyzeTLSCiphers(probe tlsmodels.TLSProbe) tlsmodels.TLSCipherQuantum {
 			}
 		}
 
-		versionAnalysis.KeyExchangeTypes = mapKeys(kexTypes)
-		versionAnalysis.AuthenticationTypes = mapKeys(authTypes)
+		versionAnalysis.KeyExchangeTypes = MapKeys(kexTypes)
+		versionAnalysis.AuthenticationTypes = MapKeys(authTypes)
 
 		for kex := range kexTypes {
 			if kex != "ECDHE" && kex != "DHE" && kex != "RSA" {
@@ -91,60 +93,48 @@ func analyzeTLSCiphers(probe tlsmodels.TLSProbe) tlsmodels.TLSCipherQuantum {
 			}
 		}
 
+		// Attach quantum assessments — per version
+		if versionAnalysis.StaticRSAKeyExchangePresent {
+			versionAnalysis.QuantumAssessment = append(
+				versionAnalysis.QuantumAssessment,
+				TLSQuantumPolicy[PolicyStaticRSAKEX],
+			)
+		}
+
+		if versionAnalysis.ForwardSecrecyPresent {
+			versionAnalysis.QuantumAssessment = append(
+				versionAnalysis.QuantumAssessment,
+				TLSQuantumPolicy[PolicyForwardSecrecy],
+			)
+		}
+
+		if versionAnalysis.AllKeyExchangesClassical {
+			versionAnalysis.QuantumAssessment = append(
+				versionAnalysis.QuantumAssessment,
+				TLSQuantumPolicy[PolicyAllClassicalKEX],
+			)
+		}
+
+		if versionAnalysis.AllAuthenticationClassical {
+			versionAnalysis.QuantumAssessment = append(
+				versionAnalysis.QuantumAssessment,
+				TLSQuantumPolicy[PolicyAllClassicalAuth],
+			)
+		}
+
 		result.PerVersion = append(result.PerVersion, versionAnalysis)
+
+		if !versionAnalysis.AllKeyExchangesClassical {
+			result.AllKeyExchangesClassical = false
+		}
+		if !versionAnalysis.AllAuthenticationClassical {
+			result.AllAuthenticationClassical = false
+		}
 	}
 
 	if result.AnyStaticRSA {
 		result.HarvestNowDecryptLaterRisk = true
 	}
 
-	// ---- Quantum Risk Evaluation ---- //
-
-	if result.AnyStaticRSA {
-		result.QuantumSignals = append(
-			result.QuantumSignals,
-			TLSCipherPolicy[PolicyStaticRSAKEX],
-		)
-	}
-
-	if result.AnyForwardSecrecy {
-		result.QuantumSignals = append(
-			result.QuantumSignals,
-			TLSCipherPolicy[PolicyForwardSecrecy],
-		)
-	}
-
-	if result.AllKeyExchangesClassical {
-		result.QuantumSignals = append(
-			result.QuantumSignals,
-			TLSCipherPolicy[PolicyAllClassicalKEX],
-		)
-	}
-
-	if result.AllAuthenticationClassical {
-		result.QuantumSignals = append(
-			result.QuantumSignals,
-			TLSCipherPolicy[PolicyAllClassicalAuth],
-		)
-	}
-
-	for _, v := range result.PerVersion {
-		if v.TLS13Cipher {
-			result.QuantumSignals = append(
-				result.QuantumSignals,
-				TLSCipherPolicy[PolicyTLS13ModernCipher],
-			)
-			break
-		}
-	}
-
 	return result
-}
-
-func mapKeys(m map[string]bool) []string {
-	var keys []string
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return keys
 }

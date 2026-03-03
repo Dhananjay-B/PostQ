@@ -1,5 +1,13 @@
 package tlsmodels
 
+type QuantumAssessment struct {
+	Asset       string
+	Findings    []string
+	Description []string
+	Risks       []string
+	Severity    string // Informational, Critical, High, Medium, Low, None
+}
+
 type TLSProtocolQuantum struct {
 	HighestVersion           string
 	LowestVersion            string
@@ -10,7 +18,7 @@ type TLSProtocolQuantum struct {
 
 	PQMigrationReady    bool
 	HybridBypassSurface bool
-	QuantumSignals      []string
+	QuantumAssessment   []QuantumAssessment
 }
 
 type TLSVersionCipherQuantum struct {
@@ -22,6 +30,7 @@ type TLSVersionCipherQuantum struct {
 	AllKeyExchangesClassical    bool
 	AllAuthenticationClassical  bool
 	TLS13Cipher                 bool
+	QuantumAssessment           []QuantumAssessment
 }
 
 type TLSCipherQuantum struct {
@@ -31,5 +40,5 @@ type TLSCipherQuantum struct {
 	AllKeyExchangesClassical   bool
 	AllAuthenticationClassical bool
 	HarvestNowDecryptLaterRisk bool
-	QuantumSignals             []string
+	QuantumAssessment          []QuantumAssessment
 }
