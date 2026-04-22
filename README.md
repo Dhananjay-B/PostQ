@@ -60,6 +60,11 @@ PostQ is a tool for discovering and inventorying cryptographic assets inside net
 │   ├── ssh.go                   # scan ssh command
 │   └── version.go               # version command
 │
+├── api/                         # API server entrypoint and handlers
+│   ├── server.go                # Gin server bootstrap
+│   └── handlers/
+│       └── tls.go               # TLS scan API handler
+│
 ├── internal/
 │   ├── analysis/                # Quantum risk assessment logic
 │   │   └── tlsanalysis/
