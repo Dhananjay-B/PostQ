@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"github.com/gin-contrib/cors"
@@ -7,7 +7,7 @@ import (
 	handler "github.com/Dhananjay-B/PostQ/api/handlers"
 )
 
-func main() {
+func StartServer() error {
 	router := gin.Default()
 	router.Use(cors.Default())
 
@@ -17,5 +17,8 @@ func main() {
 
 	}
 
-	router.Run("localhost:8080")
+	if err := router.Run(":8080"); err != nil {
+		return err
+	}
+	return nil
 }
