@@ -65,6 +65,7 @@ func ScanTLS(target tlsmodels.TLSTarget) (tlsmodels.TLSProbe, error) {
 					Position:        i,
 					SubjectDN:       cert.Subject.String(),
 					IssuerDN:        cert.Issuer.String(),
+					OCSPServer:      cert.OCSPServer,
 					SerialNumber:    cert.SerialNumber.String(),
 					NotBefore:       cert.NotBefore,
 					NotAfter:        cert.NotAfter,

@@ -8,6 +8,7 @@ type TLSCertificate struct {
 	Position        int
 	SubjectDN       string
 	IssuerDN        string
+	OCSPServer      []string
 	SerialNumber    string
 	NotBefore       time.Time
 	NotAfter        time.Time
