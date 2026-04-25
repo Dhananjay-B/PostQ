@@ -8,10 +8,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"time"
 
 	tlsmodels "github.com/Dhananjay-B/PostQ/internal/model/tlsmodels"
+	"golang.org/x/crypto/ocsp"
 )
 
 var dialer = &net.Dialer{
@@ -77,6 +80,14 @@ func ScanTLS(target tlsmodels.TLSTarget) (tlsmodels.TLSProbe, error) {
 					IsCA:            cert.IsCA,
 					IsSelfSigned:    IsSelfSigned(cert),
 				}
+			}
+
+			// Fetch OCSP status for the leaf certificate
+			if len(state.PeerCertificates) > 0 {
+				leafCert := state.PeerCertificates[0]
+				issuerCert := state.PeerCertificates[1]
+				ocspStatus := getOCSPStatus(leafCert, issuerCert)
+				peerCerts[0].OCSPStatus = ocspStatus
 			}
 
 			// Set CipherSuite in supportedCiphers for TLS 1.3 to the negotiated cipher suite
@@ -235,5 +246,46 @@ func getPublicKeyLength(publicKey any) int {
 		return len(key) * 8
 	default:
 		return 0
+	}
+}
+
+func getOCSPStatus(cert *x509.Certificate, issuer *x509.Certificate) string {
+	if len(cert.OCSPServer) == 0 {
+		return "No OCSP Server"
+	}
+	ocspURL := cert.OCSPServer[0]
+	ocspReq, err := ocsp.CreateRequest(cert, issuer, nil)
+	if err != nil {
+		return "OCSP Request Creation Failed"
+	}
+
+	// Make OCSP request
+	resp, err := http.Post(
+		ocspURL,
+		"application/ocsp-request",
+		bytes.NewReader(ocspReq),
+	)
+
+	if err != nil {
+		return "OCSP server call Failed"
+	}
+	defer resp.Body.Close()
+
+	ocspRespBytes, _ := io.ReadAll(resp.Body)
+
+	ocspResp, err := ocsp.ParseResponse(ocspRespBytes, issuer)
+
+	if err != nil {
+		return "OCSP Response Parsing Failed"
+	}
+	switch ocspResp.Status {
+	case ocsp.Good:
+		return "Good"
+	case ocsp.Revoked:
+		return "Revoked"
+	case ocsp.Unknown:
+		return "Unknown"
+	default:
+		return "OCSP Status Unknown"
 	}
 }
