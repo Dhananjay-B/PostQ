@@ -94,6 +94,38 @@ PostQ is a tool for discovering and inventorying cryptographic assets inside net
 └── README.md
 ```
 
+## How to Use
+
+### Install via Command Line
+
+Make sure to replace version numbers in URIs
+
+#### Linux / macOS
+
+```bash
+curl -LO https://github.com/Dhananjay-B/PostQ/releases/download/v1.0.0/PostQ_1.0.0_linux_amd64.tar.gz
+```
+```bash
+tar -xzf PostQ_1.0.0_linux_amd64.tar.gz
+```
+```bash
+chmod +x PostQ
+```
+```bash
+mv PostQ /usr/bin/
+```
+```bash
+PostQ version
+```
+
+#### Windows (PowerShell)
+```bash
+Invoke-WebRequest -Uri https://github.com/Dhananjay-B/PostQ/releases/download/v1.0.0/PostQ_1.0.0_windows_amd64.zip -OutFile postq.zip
+Expand-Archive postq.zip
+cd .\postq\
+.\postq.exe version
+```
+
 ## Contribution
 
 We welcome contributions of all sizes.
