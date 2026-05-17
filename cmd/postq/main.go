@@ -13,9 +13,10 @@ func main() {
 		Port:     587,
 	}
 
-	results, err := probe.ScanSMTP(target)
+	probeResponse, err := probe.ScanSMTP(target)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(results)
+	SMTPTLSProbe := probeResponse.SMTPTLSProbe
+	fmt.Printf("%+v\n", SMTPTLSProbe)
 }
