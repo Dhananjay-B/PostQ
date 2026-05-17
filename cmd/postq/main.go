@@ -3,20 +3,19 @@ package main
 import (
 	"fmt"
 
-	tlsanalysis "github.com/Dhananjay-B/PostQ/internal/analysis/tlsanalysis"
-	tlsmodels "github.com/Dhananjay-B/PostQ/internal/model/tlsmodels"
+	smtpmodels "github.com/Dhananjay-B/PostQ/internal/model/smtpmodels"
 	probe "github.com/Dhananjay-B/PostQ/internal/probe"
 )
 
 func main() {
-	target := tlsmodels.TLSTarget{
-		HostName: "example.com",
-		Port:     443,
+	target := smtpmodels.SMTPTarget{
+		HostName: "192.168.1.28",
+		Port:     587,
 	}
 
-	results, err := probe.ScanTLS(target)
+	results, err := probe.ScanSMTP(target)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(tlsanalysis.AnalyzeTLSProbe(results))
+	fmt.Println(results)
 }
