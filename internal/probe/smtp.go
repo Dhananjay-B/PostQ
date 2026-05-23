@@ -23,7 +23,8 @@ func ScanSMTP(target smtpmodels.SMTPTarget) (smtpmodels.SMTPProbe, error) {
 	)
 
 	if err != nil {
-		return probeResponse, fmt.Errorf("smtp connection failed: %w", err)
+		return probeResponse,
+			fmt.Errorf("smtp connection failed: %w", err)
 	}
 
 	defer connection.Close()
@@ -32,7 +33,8 @@ func ScanSMTP(target smtpmodels.SMTPTarget) (smtpmodels.SMTPProbe, error) {
 
 	banner, err := reader.ReadString('\n')
 	if err != nil {
-		return probeResponse, fmt.Errorf("failed to read SMTP banner: %w", err)
+		return probeResponse,
+			fmt.Errorf("failed to read SMTP banner: %w", err)
 	}
 
 	banner = strings.TrimSpace(banner)
@@ -47,24 +49,58 @@ func ScanSMTP(target smtpmodels.SMTPTarget) (smtpmodels.SMTPProbe, error) {
 			probeResponse.ESMTPSupported = true
 		}
 
-		probeResponse.SMTPSoftware = strings.Join(bannerFields[3:], "")
+		probeResponse.SMTPSoftware =
+			strings.Join(bannerFields[3:], "")
 	}
 
 	_, err = connection.Write([]byte("EHLO POSTQ\r\n"))
 	if err != nil {
-		return probeResponse, fmt.Errorf("failed to send EHLO command: %w", err)
+		return probeResponse,
+			fmt.Errorf("failed to send EHLO command: %w", err)
 	}
 
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			return probeResponse, fmt.Errorf("failed to read EHLO response: %w", err)
+			return probeResponse,
+				fmt.Errorf("failed to read EHLO response: %w", err)
 		}
 
 		line = strings.TrimSpace(line)
 
 		if strings.Contains(line, "250-STARTTLS") {
 			probeResponse.STARTTLSSupported = true
+		}
+
+		if strings.Contains(line, "250-AUTH") {
+
+			authProfile := &smtpmodels.SMTPAuthProfile{}
+
+			authLine := strings.TrimPrefix(line, "250-AUTH ")
+
+			authMethods := strings.Split(authLine, " ")
+
+			authProfile.AuthMechanisms = authMethods
+
+			for _, method := range authMethods {
+
+				switch method {
+
+				case "PLAIN":
+					authProfile.SupportsAuthPlain = true
+
+				case "LOGIN":
+					authProfile.SupportsAuthLogin = true
+
+				case "CRAM-MD5":
+					authProfile.SupportsCRAMMD5 = true
+
+				case "XOAUTH2":
+					authProfile.SupportsXOAUTH2 = true
+				}
+			}
+
+			probeResponse.AuthBeforeSTARTTLS = authProfile
 		}
 
 		if strings.HasPrefix(line, "250 ") {
@@ -76,10 +112,7 @@ func ScanSMTP(target smtpmodels.SMTPTarget) (smtpmodels.SMTPProbe, error) {
 		return probeResponse, nil
 	}
 
-	supportedVersions := enumerateSMTPTLSVersions(
-		target.HostName,
-		target.Port,
-	)
+	supportedVersions := enumerateSMTPTLSVersions(target.HostName, target.Port)
 
 	supportedCiphers := make(map[uint16][]uint16)
 
@@ -91,46 +124,83 @@ func ScanSMTP(target smtpmodels.SMTPTarget) (smtpmodels.SMTPProbe, error) {
 		}
 
 		if supported {
-
-			supportedCiphers[version] = enumerateSMTPCiphers(
-				target.HostName,
-				target.Port,
-				version,
-			)
+			supportedCiphers[version] = enumerateSMTPCiphers(target.HostName, target.Port, version)
 		}
 	}
 
 	serverCipherPreferences := make(map[uint16]bool)
 
 	for version, supported := range supportedVersions {
-
 		if supported {
 			serverCipherPreferences[version] = detectSMTPServerCipherPreference(target.HostName, target.Port, version, supportedCiphers[version])
 		}
 	}
 
-	tlsProbe := &tlsmodels.TLSProbe{}
+	probeResponse.TLSProfiles = make(map[uint16]*smtpmodels.SMTPTLSProfile)
 
-	for _, version := range []uint16{
-		tls.VersionTLS13,
-		tls.VersionTLS12,
-		tls.VersionTLS11,
-		tls.VersionTLS10,
-	} {
+	for _, version := range []uint16{tls.VersionTLS13, tls.VersionTLS12, tls.VersionTLS11, tls.VersionTLS10} {
 
 		if !supportedVersions[version] {
 			continue
 		}
 
-		tlsConn, err := establishSMTPSTARTTLSConnection(
-			target.HostName,
-			target.Port,
-			version,
-			nil,
-		)
+		tlsConn, err := establishSMTPSTARTTLSConnection(target.HostName, target.Port, version, nil)
 
 		if err != nil {
 			continue
+		}
+
+		_, err = tlsConn.Write(
+			[]byte("EHLO POSTQ\r\n"),
+		)
+
+		if err != nil {
+			tlsConn.Close()
+			continue
+		}
+
+		tlsReader := bufio.NewReader(tlsConn)
+
+		authProfile := &smtpmodels.SMTPAuthProfile{}
+
+		for {
+			line, err := tlsReader.ReadString('\n')
+
+			if err != nil {
+				break
+			}
+
+			line = strings.TrimSpace(line)
+
+			if strings.Contains(line, "250-AUTH") {
+				authLine := strings.TrimPrefix(line, "250-AUTH ")
+
+				authMethods := strings.Split(authLine, " ")
+
+				authProfile.AuthMechanisms = authMethods
+
+				for _, method := range authMethods {
+
+					switch method {
+
+					case "PLAIN":
+						authProfile.SupportsAuthPlain = true
+
+					case "LOGIN":
+						authProfile.SupportsAuthLogin = true
+
+					case "CRAM-MD5":
+						authProfile.SupportsCRAMMD5 = true
+
+					case "XOAUTH2":
+						authProfile.SupportsXOAUTH2 = true
+					}
+				}
+			}
+
+			if strings.HasPrefix(line, "250 ") {
+				break
+			}
 		}
 
 		state := tlsConn.ConnectionState()
@@ -138,7 +208,6 @@ func ScanSMTP(target smtpmodels.SMTPTarget) (smtpmodels.SMTPProbe, error) {
 		peerCerts := make([]*tlsmodels.TLSCertificate, len(state.PeerCertificates))
 
 		for i, cert := range state.PeerCertificates {
-
 			peerCerts[i] = &tlsmodels.TLSCertificate{
 				Position:        i,
 				SubjectDN:       cert.Subject.String(),
@@ -158,35 +227,25 @@ func ScanSMTP(target smtpmodels.SMTPTarget) (smtpmodels.SMTPProbe, error) {
 		}
 
 		if len(state.PeerCertificates) > 1 {
-
 			leafCert := state.PeerCertificates[0]
 			issuerCert := state.PeerCertificates[1]
-
-			peerCerts[0].OCSPStatus = getOCSPStatus(
-				leafCert,
-				issuerCert,
-			)
+			peerCerts[0].OCSPStatus = getOCSPStatus(leafCert, issuerCert)
 		}
 
 		if state.Version == tls.VersionTLS13 {
-			supportedCiphers[tls.VersionTLS13] =
-				[]uint16{state.CipherSuite}
+			supportedCiphers[tls.VersionTLS13] = []uint16{state.CipherSuite}
 		}
 
-		tlsProbe.Host = target.HostName
-		tlsProbe.Port = target.Port
-		tlsProbe.ServerName = state.ServerName
-		tlsProbe.SupportedTLSVersions = supportedVersions
-		tlsProbe.SupportedCiphers = supportedCiphers
-		tlsProbe.ServerCipherPreference = serverCipherPreferences
-		tlsProbe.PeerCertificates = peerCerts
+		probeResponse.TLSProfiles[version] = &smtpmodels.SMTPTLSProfile{
+			TLSVersion:             version,
+			SupportedCipherSuites:  supportedCiphers[version],
+			ServerCipherPreference: serverCipherPreferences[version],
+			AuthAfterSTARTTLS:      authProfile,
+			PeerCertificates:       peerCerts,
+		}
 
 		tlsConn.Close()
-
-		break
 	}
-
-	probeResponse.SMTPTLSProbe = tlsProbe
 
 	return probeResponse, nil
 }
@@ -244,6 +303,7 @@ func enumerateSMTPCiphers(host string, port int, version uint16) []uint16 {
 		if state.Version == version && state.CipherSuite == cipher.ID {
 			supportedCiphers = append(supportedCiphers, cipher.ID)
 		}
+
 		tlsConn.Close()
 	}
 
@@ -252,7 +312,11 @@ func enumerateSMTPCiphers(host string, port int, version uint16) []uint16 {
 
 func establishSMTPSTARTTLSConnection(host string, port int, version uint16, cipherSuites []uint16) (*tls.Conn, error) {
 
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), 5*time.Second)
+	conn, err := net.DialTimeout(
+		"tcp",
+		fmt.Sprintf("%s:%d", host, port),
+		5*time.Second,
+	)
 
 	if err != nil {
 		return nil, err
@@ -266,14 +330,20 @@ func establishSMTPSTARTTLSConnection(host string, port int, version uint16, ciph
 		return nil, err
 	}
 
-	_, err = conn.Write([]byte("EHLO POSTQ\r\n"))
+	_, err = conn.Write(
+		[]byte("EHLO POSTQ\r\n"),
+	)
+
 	if err != nil {
 		conn.Close()
 		return nil, err
 	}
 
 	for {
-		line, err := reader.ReadString('\n')
+
+		line, err :=
+			reader.ReadString('\n')
+
 		if err != nil {
 			conn.Close()
 			return nil, err
@@ -286,13 +356,18 @@ func establishSMTPSTARTTLSConnection(host string, port int, version uint16, ciph
 		}
 	}
 
-	_, err = conn.Write([]byte("STARTTLS\r\n"))
+	_, err = conn.Write(
+		[]byte("STARTTLS\r\n"),
+	)
+
 	if err != nil {
 		conn.Close()
 		return nil, err
 	}
 
-	response, err := reader.ReadString('\n')
+	response, err :=
+		reader.ReadString('\n')
+
 	if err != nil {
 		conn.Close()
 		return nil, err
@@ -300,16 +375,20 @@ func establishSMTPSTARTTLSConnection(host string, port int, version uint16, ciph
 
 	if !strings.HasPrefix(response, "220") {
 		conn.Close()
-		return nil, fmt.Errorf("STARTTLS rejected")
+		return nil,
+			fmt.Errorf("STARTTLS rejected")
 	}
 
-	tlsConn := tls.Client(conn, &tls.Config{
-		ServerName:         host,
-		MinVersion:         version,
-		MaxVersion:         version,
-		CipherSuites:       cipherSuites,
-		InsecureSkipVerify: true,
-	})
+	tlsConn := tls.Client(
+		conn,
+		&tls.Config{
+			ServerName:         host,
+			MinVersion:         version,
+			MaxVersion:         version,
+			CipherSuites:       cipherSuites,
+			InsecureSkipVerify: true,
+		},
+	)
 
 	err = tlsConn.Handshake()
 	if err != nil {
@@ -345,7 +424,8 @@ func detectSMTPServerCipherPreference(host string, port int, version uint16, cip
 	j := 0
 
 	for i := len(cipherList) - 1; i >= 0; i-- {
-		reversedCipherList[j] = cipherList[i]
+		reversedCipherList[j] =
+			cipherList[i]
 		j++
 	}
 
