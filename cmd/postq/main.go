@@ -17,6 +17,6 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	SMTPTLSProbe := probeResponse.SMTPTLSProbe
-	fmt.Printf("%+v\n", SMTPTLSProbe)
+	fmt.Printf("%+v\n", probeResponse)
+	fmt.Printf("%+v\n", probeResponse.TLSProfiles)
 }
