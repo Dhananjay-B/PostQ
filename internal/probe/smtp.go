@@ -108,6 +108,24 @@ func ScanSMTP(target smtpmodels.SMTPTarget) (smtpmodels.SMTPProbe, error) {
 		}
 	}
 
+	// Check if AUTH can be performed before STARTTLS
+	_, err = connection.Write([]byte("AUTH LOGIN\r\n"))
+	if err == nil {
+		authResponse, err := reader.ReadString('\n')
+
+		if err == nil {
+			authResponse = strings.TrimSpace(authResponse)
+
+			if strings.HasPrefix(authResponse, "334") {
+				probeResponse.AUTHAllowedWithoutTLS = true
+				probeResponse.STARTTLSEnforcedForAuth = false
+			} else if strings.HasPrefix(authResponse, "530") {
+				probeResponse.AUTHAllowedWithoutTLS = false
+				probeResponse.STARTTLSEnforcedForAuth = true
+			}
+		}
+	}
+
 	if !probeResponse.STARTTLSSupported {
 		return probeResponse, nil
 	}
