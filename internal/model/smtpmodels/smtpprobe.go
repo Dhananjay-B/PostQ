@@ -6,7 +6,9 @@ type SMTPProbe struct {
 	SMTPSoftware      string
 	STARTTLSSupported bool
 
-	AuthBeforeSTARTTLS *SMTPAuthProfile
+	AuthBeforeSTARTTLS      *SMTPAuthProfile
+	AUTHAllowedWithoutTLS   bool
+	STARTTLSEnforcedForAuth bool
 
 	TLSProfiles map[uint16]*SMTPTLSProfile
 }
