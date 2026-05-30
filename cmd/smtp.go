@@ -9,10 +9,14 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/spf13/cobra"
+
+	"github.com/Dhananjay-B/PostQ/internal/analysis/smtpanalysis"
 	smtpmodels "github.com/Dhananjay-B/PostQ/internal/model/smtpmodels"
 	probes "github.com/Dhananjay-B/PostQ/internal/probe"
-	"github.com/spf13/cobra"
 )
+
+var assessSMTP bool
 
 // smtpCmd represents the smtp command
 var smtpCmd = &cobra.Command{
@@ -49,18 +53,35 @@ SMTP scan makes raw TCP connection to remote host on specified port and collects
 			Port:     port,
 		}
 
-		result, err := probes.ScanSMTP(smtpTarget)
+		probe, err := probes.ScanSMTP(smtpTarget)
 		if err != nil {
 			return err
+		}
+
+		if assessSMTP {
+			risks, err := smtpanalysis.AnalyzeSMTPProbe(probe)
+			if err != nil {
+				return err
+			}
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(risks)
 		}
 
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 
-		return enc.Encode(result)
+		return enc.Encode(probe)
 	},
 }
 
 func init() {
 	scanCmd.AddCommand(smtpCmd)
+
+	smtpCmd.Flags().BoolVar(
+		&assessSMTP,
+		"assess",
+		false,
+		"Run quantum risk assessment on scan result",
+	)
 }
