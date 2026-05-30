@@ -16,7 +16,7 @@ import (
 	probes "github.com/Dhananjay-B/PostQ/internal/probe"
 )
 
-var assess bool
+var assessTLS bool
 
 var tlsCmd = &cobra.Command{
 	Use:   "tls [endpoint:port]",
@@ -48,7 +48,7 @@ TLS scan performs enumerated scanning and provides complete set of supported cry
 		if err != nil {
 			return err
 		}
-		if assess {
+		if assessTLS {
 			risks, err := tlsanalysis.AnalyzeTLSProbe(probe)
 			if err != nil {
 				return err
@@ -67,7 +67,7 @@ func init() {
 	scanCmd.AddCommand(tlsCmd)
 
 	tlsCmd.Flags().BoolVar(
-		&assess,
+		&assessTLS,
 		"assess",
 		false,
 		"Run quantum risk assessment on scan result",
